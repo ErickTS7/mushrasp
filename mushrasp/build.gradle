@@ -1,0 +1,94 @@
+plugins {
+    alias(libs.plugins.android.library)
+    id 'maven-publish'
+}
+
+android {
+    namespace 'com.mushroom.rasp'
+    compileSdk 34
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
+    }
+
+    defaultConfig {
+        minSdk 28
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation libs.appcompat
+    implementation libs.material
+
+
+    api 'com.karumi:dexter:6.2.3'
+    api 'com.scottyab:rootbeer-lib:0.1.0'
+
+    api 'com.squareup.okhttp3:okhttp:4.12.0'
+    api 'com.squareup.okhttp3:okhttp-urlconnection:4.12.0'
+    api 'com.squareup.okhttp3:logging-interceptor:4.12.0'
+
+    testImplementation libs.junit
+    androidTestImplementation libs.ext.junit
+    androidTestImplementation libs.espresso.core
+}
+
+
+
+
+afterEvaluate {
+    publishing {
+        publications {
+            create("mavenRelease", MavenPublication) {
+                from components.findByName("release")
+
+                groupId = 'com.mushroom'
+                artifactId = "mushrasp"
+                //version = '1.0'
+
+                artifact("$buildDir/outputs/aar/mushrasp-release.aar")
+
+                // Inclua as dependências transitivas no POM
+                pom.withXml {
+                    def dependenciesNode = asNode().appendNode('dependencies')
+                    configurations.api.allDependencies.forEach { dependency ->
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', dependency.group)
+                        dependencyNode.appendNode('artifactId', dependency.name)
+                        dependencyNode.appendNode('version', dependency.version)
+                        dependencyNode.appendNode('scope', 'compile')
+                    }
+                }
+            }
+        }
+    }
+
+    tasks.named("publishMavenReleasePublicationToMavenLocal") {
+        dependsOn tasks.named("bundleReleaseAar")
+    }
+
+}
+
+
+
+
+
+
+
